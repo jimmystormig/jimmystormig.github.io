@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Filip the Farty Frog</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Komika+Axis&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="game-container">
@@ -31,9 +31,10 @@
                 </div>
             </div>
             <div id="score">0</div>
-            <div id="fps-counter" style="position: absolute; top: 10px; right: 10px; color: yellow; font-size: 14px; background: rgba(0,0,0,0.8); padding: 5px 8px; border-radius: 5px; font-family: monospace; z-index: 1000; font-weight: bold; white-space: nowrap;">FPS: --</div>
+            <div id="high-score">Best: 0</div>
+            <div id="fps-counter" style="position: absolute; top: 10px; left: 10px; color: yellow; font-size: 14px; background: rgba(0,0,0,0.8); padding: 5px 8px; border-radius: 5px; font-family: monospace; z-index: 1000; font-weight: bold; white-space: nowrap;">FPS: --</div>
             <div id="start-message"><h1 class="game-title">Filip the Farty Frog</h1>Help Filip fart his way through the pipes!<br>Press Space or Tap to Start</div>
-            <div id="game-over" class="hidden">Filip crashed!<br><span id="final-score"></span><br>Press Space or Tap to Restart</div>
+            <div id="game-over" class="hidden">Filip crashed!<br>Score: <span id="final-score"></span><br>Best: <span id="final-high-score"></span><br>Press Space or Tap to Restart</div>
         </div>
     </div>
 

@@ -2,6 +2,7 @@
 let gameStarted = false;
 let gameOver = false;
 let score = 0;
+let highScore = 0;
 let gravity = 0.7; // Increased gravity for better game feel
 let velocity = 0;
 let frogPosition = 200;
@@ -164,9 +165,11 @@ function generatePipe() {
 const gameArea = document.querySelector('.game-area');
 const frog = document.getElementById('frog');
 const scoreElement = document.getElementById('score');
+const highScoreElement = document.getElementById('high-score');
 const startMessage = document.getElementById('start-message');
 const gameOverMessage = document.getElementById('game-over');
 const finalScoreElement = document.getElementById('final-score');
+const finalHighScoreElement = document.getElementById('final-high-score');
 
 // Sound effects
 const fartSound = document.getElementById('fart-sound');
@@ -226,6 +229,27 @@ if (fartSound) {
 if (hitSound) {
     hitSound.oncanplaythrough = () => console.log("Hit sound can play through");
     hitSound.onerror = (e) => console.error("Error loading hit sound:", e);
+}
+
+// High score management
+function loadHighScore() {
+    const saved = localStorage.getItem('filipFrogHighScore');
+    highScore = saved ? parseInt(saved, 10) : 0;
+    console.log('Loaded high score:', highScore);
+}
+
+function saveHighScore() {
+    localStorage.setItem('filipFrogHighScore', highScore.toString());
+    console.log('Saved high score:', highScore);
+}
+
+function updateHighScore() {
+    if (score > highScore) {
+        highScore = score;
+        saveHighScore();
+        return true; // New high score!
+    }
+    return false;
 }
 
 // Event listeners
@@ -647,6 +671,9 @@ function init() {
     
     // Clear UI elements
     scoreElement.textContent = score;
+    if (highScoreElement) {
+        highScoreElement.textContent = `Best: ${highScore}`;
+    }
     startMessage.classList.add('hidden');
     gameOverMessage.classList.add('hidden');
     
@@ -849,6 +876,22 @@ function endGame() {
     // Update final score
     if (finalScoreElement) {
         finalScoreElement.textContent = score;
+    }
+    if (finalHighScoreElement) {
+        finalHighScoreElement.textContent = highScore;
+    }
+    
+    // Check and update high score
+    const isNewHighScore = updateHighScore();
+    if (highScoreElement) {
+        highScoreElement.textContent = `Best: ${highScore}`;
+        if (isNewHighScore) {
+            console.log("NEW HIGH SCORE:", highScore);
+            // Update the final high score display too
+            if (finalHighScoreElement) {
+                finalHighScoreElement.textContent = highScore;
+            }
+        }
     }
     
     console.log("Game over! Final score:", score);
@@ -1760,7 +1803,6 @@ function createRipplingFart(duration, now) {
     
     let lastOut = 0.0;
     for (let i = 0; i < bufferSize; i++) {
-        // Enhanced brown noise formula (lower coefficient = browner noise)
         const white = Math.random() * 2 - 1;
         output[i] = (lastOut + (0.015 * white)) / 1.015;
         lastOut = output[i];
@@ -1860,11 +1902,11 @@ function createSqueakyFart(duration, now) {
     
     // Add strong compression for that tight, pressurized sound
     const compressor = audioContext.createDynamicsCompressor();
-    compressor.threshold.value = -24;
-    compressor.knee.value = 4;
-    compressor.ratio.value = 12;
-    compressor.attack.value = 0.002;
-    compressor.release.value = 0.05;
+    compressor.threshold.setValueAtTime(-24);
+    compressor.knee.setValueAtTime(4);
+    compressor.ratio.setValueAtTime(12);
+    compressor.attack.setValueAtTime(0.002);
+    compressor.release.setValueAtTime(0.05);
     
     // Create primary brown noise component (all farts need some noise component)
     const brownBufferSize = 2 * audioContext.sampleRate;
@@ -2105,11 +2147,11 @@ function createRumblingFart(duration, now) {
     
     // Add compression for rich tone with gentler settings
     const compressor = audioContext.createDynamicsCompressor();
-    compressor.threshold.value = -22; // Slightly lower threshold for smoother compression
-    compressor.knee.value = 8; // Wider knee for more gradual compression
-    compressor.ratio.value = 8; // Lower ratio for less aggressive compression
-    compressor.attack.value = 0.008; // Slightly slower attack
-    compressor.release.value = 0.15; // Slightly longer release
+    compressor.threshold.setValueAtTime(-22, now); // Slightly lower threshold for smoother compression
+    compressor.knee.setValueAtTime(8, now); // Wider knee for more gradual compression
+    compressor.ratio.setValueAtTime(8, now); // Lower ratio for less aggressive compression
+    compressor.attack.setValueAtTime(0.008, now); // Slightly slower attack
+    compressor.release.setValueAtTime(0.15, now); // Slightly longer release
     
     // Create ultra-deep brown noise (lowest frequency content)
     const bufferSize = 2 * audioContext.sampleRate;
@@ -2569,3 +2611,15 @@ function getAnimationDurationForType(fartType) {
         default: return 1000; // Default 1s
     }
 }
+
+// Initialize the game
+function initializeGame() {
+    loadHighScore();
+    if (highScoreElement) {
+        highScoreElement.textContent = `Best: ${highScore}`;
+    }
+    console.log('Game initialized with high score:', highScore);
+}
+
+// Start the game when the page loads
+initializeGame();

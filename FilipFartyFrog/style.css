@@ -22,7 +22,8 @@ body {
 
 .game-title {
     color: #ffffff;
-    font-family: 'Komika Axis', cursive, Arial, sans-serif;
+    font-family: 'Fredoka', cursive, Arial, sans-serif;
+    font-weight: 700;
     font-size: 2.2rem;
     text-shadow: 3px 3px 0 #2e7d32, 
                  -1px -1px 0 #2e7d32, 
@@ -454,13 +455,25 @@ body {
 
 #score {
     position: absolute;
-    top: 10px;
+    top: 5px;
     right: 10px;
     font-size: 40px;
     font-weight: bold;
     color: white;
-    z-index: 10;
+    z-index: 1001;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+#high-score {
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFD700;
+    z-index: 1001;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+    font-family: 'Fredoka', cursive, Arial, sans-serif;
 }
 
 #start-message, #game-over {
@@ -478,7 +491,8 @@ body {
     z-index: 10;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
     border: 2px solid #4CAF50;
-    font-family: 'Komika Axis', cursive, Arial, sans-serif;
+    font-family: 'Fredoka', cursive, Arial, sans-serif;
+    font-weight: 600;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     line-height: 1.4;
     width: 85%;
