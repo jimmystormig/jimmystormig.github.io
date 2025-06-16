@@ -38,37 +38,9 @@
         </div>
     </div>
 
-    <!-- Load sound effects with mobile-friendly attributes -->
-    <!-- Added crossorigin attribute to help with CORS issues -->
-    <audio id="fart-sound" src="sounds/fart.mp3" preload="auto" playsinline webkit-playsinline crossorigin="anonymous"></audio>
-    <audio id="hit-sound" src="sounds/hit.mp3" preload="auto" playsinline webkit-playsinline crossorigin="anonymous"></audio>
-    
-    <!-- Add silent audio elements for iOS audio unlocking -->
-    <audio id="silent-sound" src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjEwLjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABEgD///////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAX/////AAAAAAAAAAAAAAAAAAAA" preload="auto" playsinline webkit-playsinline loop></audio>
-    <audio id="silent-sound-2" src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjEwLjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABEgD///////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAX/////AAAAAAAAAAAAAAAAAAAA" preload="auto" playsinline webkit-playsinline></audio>
-    
-    <!-- Alternative sound backup to handle cases where MP3s might fail -->
-    <audio id="alt-fart-sound" preload="auto" playsinline webkit-playsinline crossorigin="anonymous">
-        <source src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjEwLjEwMAAAAAAAAAAAAAAA//uQZAAP8AAAf4AAAAgAAA/wAAABAAAB/gAAACAAAD/AAAAEAAAAAGluZwAAAA8AAAACAAACQgBA////////////////////////////////////////////////////////////////AAAALAAAAAAAAAAAAAAAAAAATGF2YzU4Ljc3LjEwMMAAAAAAAAAAAAAAAAj7" type="audio/mpeg">
-    </audio>
-    
-    <!-- iOS specific button to unlock audio - hidden but can be tapped -->
-    <button id="audio-unlock-button" 
-            style="position: absolute; bottom: 5px; right: 5px; z-index: 100; 
-                  width: 40px; height: 40px; opacity: 0.7; background: rgba(0,0,0,0.2); 
-                  border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; 
-                  color: white; font-size: 16px; display: none; cursor: pointer;
-                  box-shadow: 0 0 5px rgba(0,0,0,0.2);">
-        🔊
-    </button>
-    
-    <!-- Audio status indicator -->
-    <div id="audio-status"
-         style="position: absolute; top: 10px; left: 10px; z-index: 100; 
-                font-size: 10px; color: white; background: rgba(0,0,0,0.3);
-                padding: 2px 5px; border-radius: 3px; display: none;">
-        Sound: Initializing...
-    </div>
+    <!-- Load sound effects -->
+    <audio id="fart-sound" src="sounds/fart.mp3" preload="auto"></audio>
+    <audio id="hit-sound" src="sounds/hit.mp3" preload="auto"></audio>
     
     <script src="game.js"></script>
 </body>

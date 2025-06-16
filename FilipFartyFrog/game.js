@@ -7,7 +7,7 @@ let gravity = 0.7; // Increased gravity for better game feel
 let velocity = 0;
 let frogPosition = 200;
 let pipes = [];
-let pipeWidth = 52; // Will be updated for mobile
+let pipeWidth = 52;
 let pipeGap = 150;
 let minPipeHeight = 50;
 let pipeInterval = 3000; // Time between pipes in milliseconds (increased further to reduce performance issues)
@@ -17,7 +17,6 @@ let lastCloudTime = 0;
 let cloudInterval = 8000; // Time between new clouds in milliseconds
 let lastFrameTime = 0; // For frame rate limiting
 let targetFPS = 60; // Target frames per second (changed to let so it can be modified)
-let currentTargetFPS = 60; // Current effective FPS based on device performance
 let gameWidth, gameHeight; // Store dimensions for consistent access
 
 // FPS tracking variables
@@ -55,15 +54,9 @@ function generateCloud() {
     
     // Set random speed (slower for larger clouds)
     let speed;
-    if (window.isMobile) {
-        // Slower on mobile for performance
-        speed = 0.1 + Math.random() * 0.2;
-    } else {
-        // Faster on desktop
-        if (size === 'small') speed = 0.3 + Math.random() * 0.3;
-        else if (size === 'medium') speed = 0.2 + Math.random() * 0.2;
-        else speed = 0.1 + Math.random() * 0.15;
-    }
+    if (size === 'small') speed = 0.3 + Math.random() * 0.3;
+    else if (size === 'medium') speed = 0.2 + Math.random() * 0.2;
+    else speed = 0.1 + Math.random() * 0.15;
     
     // Store speed and creation time as data attributes
     cloud.dataset.speed = speed;
@@ -84,52 +77,21 @@ function generatePipe() {
         return;
     }
 
-    // Check pipe limits based on device type
-    if (window.isMobile) {
-        // Limit number of pipes on mobile for performance
-        const maxPipes = score > 0 ? 3 : 2;
-        if (pipes.length >= maxPipes) {
-            console.log("Pipe limit reached on mobile:", pipes.length);
-            return;
-        }
-        
-        // Check spacing between pipes for mobile
-        const lastPipe = pipes[pipes.length - 1];
-        if (lastPipe) {
-            const minDistance = score > 0 ? 200 : 250;
-            if (lastPipe.position > gameWidth - minDistance) {
-                console.log("Waiting for more distance between pipes");
-                return;
-            }
-        }
-    } else {
-        // Limit for desktop
-        if (pipes.length >= 5) {
-            return;
-        }
+    // Check pipe limits
+    if (pipes.length >= 5) {
+        return;
     }
     
     console.log("Generating new pipe");
     
-    // Adjust pipe gap for device type
-    const actualPipeGap = window.isMobile ? pipeGap + 20 : pipeGap;
+    // Calculate random height for top pipe
+    const availableHeight = gameHeight - pipeGap - (2 * minPipeHeight);
     
     // Calculate random height for top pipe
-    const availableHeight = gameHeight - actualPipeGap - (2 * minPipeHeight);
-    
-    // More centered positions with less extreme values
-    let topPipeHeight;
-    if (window.isMobile) {
-        // More centered positions on mobile
-        topPipeHeight = minPipeHeight + (availableHeight * 0.3) + 
-                         (Math.random() * (availableHeight * 0.4));
-    } else {
-        // More random on desktop
-        topPipeHeight = minPipeHeight + Math.random() * availableHeight;
-    }
+    const topPipeHeight = minPipeHeight + Math.random() * availableHeight;
     
     // Calculate bottom pipe height
-    const bottomPipeHeight = gameHeight - topPipeHeight - actualPipeGap;
+    const bottomPipeHeight = gameHeight - topPipeHeight - pipeGap;
     
     // Create pipe elements
     const topPipe = document.createElement('div');
@@ -178,7 +140,6 @@ const hitSound = document.getElementById('hit-sound');
 // Create audio context for fallback sound playing
 let audioContext;
 window.audioInitialized = false; // Flag to track if audio has been initialized
-window.iOSAudioUnlocked = false; // Special flag for iOS audio
 window.audioUnlocked = false;   // Global audio unlock flag
 
 // Initialize audio later after user interaction
@@ -192,18 +153,6 @@ function initializeAudio() {
         console.log("AudioContext initialized");
         window.audioInitialized = true;
         
-        // Check if we're on iOS specifically
-        window.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        
-        if (window.isIOS) {
-            console.log("iOS device detected, using special audio handling");
-            // Show the iOS audio unlock button
-            const unlockButton = document.getElementById('audio-unlock-button');
-            if (unlockButton) {
-                unlockButton.style.display = 'block';
-                unlockButton.addEventListener('touchend', forceIOSAudioUnlock);
-            }
-        }
     } catch (e) {
         console.error("Web Audio API not supported:", e);
     }
@@ -254,15 +203,28 @@ function updateHighScore() {
 
 // Event listeners
 document.addEventListener('keydown', handleKeyDown);
-document.addEventListener('touchstart', handleTouchStart, { passive: false });
+
+// Add basic touch support for mobile
+document.addEventListener('touchstart', handleTouch, { passive: false });
+
+// Basic touch handler for mobile support
+function handleTouch(event) {
+    event.preventDefault(); // Prevent scrolling and other touch behaviors
+    
+    if (!gameStarted) {
+        init();
+    } else if (gameOver) {
+        init();
+    } else {
+        flap();
+    }
+}
 
 // Add listeners to unlock audio on first interaction
-// Use the event listener without 'once' to ensure it's tried multiple times
 document.addEventListener('keydown', unlockAudio);
 document.addEventListener('touchstart', unlockAudio, { passive: false });
 document.addEventListener('click', unlockAudio);
 
-// Also add listeners to the game area specifically which may work better on mobile
 gameArea.addEventListener('touchstart', unlockAudio, { passive: false });
 gameArea.addEventListener('click', unlockAudio);
 
@@ -286,148 +248,10 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Prevent double-tap zoom and other touch issues on mobile
-document.addEventListener('touchend', (e) => {
-    if (e.target.closest('.game-container')) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-}, { passive: false });
-
-// Disable page scrolling/zooming when interacting with the game
-document.body.addEventListener('touchmove', (e) => {
-    if (e.target.closest('.game-container')) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-}, { passive: false });
-
-// Extra protection against scrolling during the game
-document.addEventListener('touchstart', (e) => {
-    if (e.target.closest('.game-container')) {
-        e.preventDefault();
-        // Don't call stopPropagation here so the tap still works for the game
-    }
-}, { passive: false });
-
-// Special function for iOS audio that needs to be called from a touch event
-function forceIOSAudioUnlock(event) {
-    if (event) {
-        event.preventDefault();
-    }
-    
-    console.log("iOS specific audio unlock triggered");
-    
-    // If we already succeeded, don't try again
-    if (window.audioUnlocked && window.iOSAudioUnlocked) {
-        console.log("Audio already unlocked, no need to try again");
-        return;
-    }
-    
-    // Initialize audio if not already done
-    initializeAudio();
-    
-    // Specific iOS hack using user gesture
-    document.body.addEventListener('touchend', unlockIOSAudio, { once: true });
-    
-    function unlockIOSAudio() {
-        // First try: Play silent sound with Web Audio API
-        if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume().then(() => {
-                console.log("AudioContext resumed");
-                
-                // Create and play a silent buffer
-                try {
-                    const buffer = audioContext.createBuffer(1, 1, 22050);
-                    const source = audioContext.createBufferSource();
-                    source.buffer = buffer;
-                    source.connect(audioContext.destination);
-                    source.start(0);
-                    console.log("Silent buffer played");
-                } catch (e) {
-                    console.error("Error playing silent buffer:", e);
-                }
-            });
-        }
-        
-        // Second try: Unmute and play all audio elements in sequence
-        // This serialized approach can work better on iOS
-        const audioElements = Array.from(document.querySelectorAll('audio'));
-        
-        // Function to load and play each audio in sequence
-        function playNextAudio(index) {
-            if (index >= audioElements.length) {
-                console.log("All audio elements attempted");
-                finishUnlock();
-                return;
-            }
-            
-            const audio = audioElements[index];
-            audio.muted = false;
-            audio.volume = 0.01;
-            
-            if (audio.id === 'silent-sound' || audio.id === 'silent-sound-2') {
-                // Keep silent sounds playing in the background
-                audio.loop = true;
-            } 
-            
-            // Delay slightly between each audio element
-            setTimeout(() => {
-                const playPromise = audio.play();
-                if (playPromise) {
-                    playPromise.then(() => {
-                        console.log(`Audio ${audio.id} unlocked`);
-                        
-                        // If it's not a silent sound, pause it after a brief moment
-                        if (audio.id !== 'silent-sound' && audio.id !== 'silent-sound-2') {
-                            setTimeout(() => {
-                                audio.pause();
-                                audio.currentTime = 0;
-                                audio.volume = 1.0;
-                            }, 100);
-                        }
-                        
-                        // Try next audio element
-                        playNextAudio(index + 1);
-                    }).catch(e => {
-                        console.log(`Failed to unlock ${audio.id}:`, e);
-                        // Continue with next audio despite error
-                        playNextAudio(index + 1);
-                    });
-                } else {
-                    console.log(`No promise for ${audio.id}, moving to next`);
-                    playNextAudio(index + 1);
-                }
-            }, 100);
-        }
-        
-        // Start the sequential audio unlocking
-        playNextAudio(0);
-    }
-    
-    function finishUnlock() {
-        console.log("iOS audio unlock sequence complete");
-        window.iOSAudioUnlocked = true;
-        window.audioUnlocked = true;
-        
-        // Hide the unlock button after success but keep it slightly visible for emergency re-unlocking
-        const unlockButton = document.getElementById('audio-unlock-button');
-        if (unlockButton) {
-            unlockButton.style.opacity = '0.1';
-            unlockButton.textContent = '🔊';
-            setTimeout(() => {
-                // Keep it visible but very subtle
-                unlockButton.style.opacity = '0.05';
-            }, 2000);
-        }
-        
-        // Fix for Safari - prepare all audio elements
-        prepareAllAudioElements();
-        
-        // Update audio status
-        updateAudioStatus('Sound: Ready', true);
-    }
-}
+// Try to unlock audio immediately when the page is loaded
+window.addEventListener('load', () => {
+    setTimeout(unlockAudio, 100);
+});
 
 // Function to unlock audio context on user interaction
 function unlockAudio() {
@@ -471,7 +295,7 @@ function unlockAudio() {
     }
 }
 
-// This function ensures audio works on mobile browsers by triggering all methods of sound playback
+// This function ensures audio works by triggering all methods of sound playback
 function ensureAudioWorks() {
     // Track attempts to avoid excessive logging
     if (!window.audioUnlockAttempts) {
@@ -483,21 +307,6 @@ function ensureAudioWorks() {
     }
     
     console.log(`Attempting to ensure audio works (attempt ${window.audioUnlockAttempts})`);
-    
-    // If we're on iOS, we need special handling
-    if (window.isIOS) {
-        // Handle iOS-specific audio issues
-        if (!window.iOSAudioUnlocked) {
-            console.log("iOS audio not yet unlocked - waiting for user interaction");
-            // Make sure our button is visible
-            const unlockButton = document.getElementById('audio-unlock-button');
-            if (unlockButton) {
-                unlockButton.style.display = 'block';
-                unlockButton.style.opacity = '0.8';
-            }
-            return; // We can't force unlock on iOS
-        }
-    }
     
     // Make sure all audio elements are unmuted
     const audioElements = document.querySelectorAll('audio');
@@ -609,49 +418,8 @@ function init() {
     // Immediately attempt to unlock audio on game start
     unlockAudio();
     
-    // Check if we're on mobile (once per session)
-    if (window.isMobile === undefined) {
-        // Use multiple detection methods for better accuracy
-        window.isMobile = /iPhone|iPad|iPod|Android|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                          (window.innerWidth < 600) ||
-                          ('ontouchstart' in window);
-                          
-        // Specifically identify Safari
-        window.isSafariMobile = window.isMobile && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        
-        if (window.isSafariMobile) {
-            // Further identify iOS Safari which has the most performance issues
-            window.isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            console.log("Safari Mobile detected (iOS: " + window.isIOSSafari + ")");
-        }
-        
-        console.log("Mobile device detected:", window.isMobile, "Safari:", window.isSafariMobile);
-        
-        // Cache frog height to avoid layout thrashing
-        window.frogHeight = frog.clientHeight || 40;
-        
-        // If on mobile, we'll use a lower target FPS
-        if (window.isMobile) {
-            // Start conservative, then adapt based on performance
-            targetFPS = window.isSafariMobile ? 45 : 50; // Allow higher target for adaptive scaling
-            currentTargetFPS = 30; // Set current target immediately
-            pipeInterval = 2500; // Reduced interval for more pipes on mobile (was 3500)
-            gravity = 0.65; // Make sure gravity is still effective
-            pipeWidth = 64; // Match the mobile CSS width
-            
-            // Enable performance optimizations for mobile
-            window.enablePerformanceMode = true;
-            window.reducedEffects = true;
-            
-            // Output debug info to help diagnose issues
-            console.log("Mobile settings applied: FPS=" + targetFPS + ", pipeInterval=" + pipeInterval + ", pipeWidth=" + pipeWidth);
-        }
-        
-        // Force debug output to show mobile detection worked
-        setTimeout(() => {
-            console.log("DEVICE TYPE: " + (window.isMobile ? "MOBILE" : "DESKTOP"));
-        }, 100);
-    }
+    // Cache frog height to avoid layout thrashing
+    window.frogHeight = frog.clientHeight || 40;
     
     // Reset game variables
     gameStarted = true;
@@ -662,7 +430,7 @@ function init() {
     pipes = [];
     lastPipeTime = 0;
     lastCloudTime = 0;
-    cloudInterval = window.isMobile ? 15000 : 8000; // Much fewer clouds on mobile
+    cloudInterval = 8000; // Time between new clouds
     lastFrameTime = 0;
     window.frogSetup = false; // For updateFrogPosition optimization
     window.frameCount = 0;
@@ -683,12 +451,6 @@ function init() {
         if (cloud.parentNode) cloud.parentNode.removeChild(cloud);
     });
     
-    // Ensure viewport is properly set for mobile
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    if (viewportMeta) {
-        viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-    }
-    
     // Try to unlock audio during game initialization
     unlockAudio();
     
@@ -704,44 +466,9 @@ function init() {
     // Show initial audio status
     updateAudioStatus('Sound: Initializing...', false);
     
-    // Show the audio unlock button on iOS or if audio failed previously
-    if (window.isIOS || window.audioStatusShown) {
-        const unlockButton = document.getElementById('audio-unlock-button');
-        if (unlockButton) {
-            unlockButton.style.display = 'block';
-        }
-    }
-    
     // Reset pipe debug counters
     window.pipeDebugCount = 0;
     window.firstPipeGenerated = false;
-    
-    // Add a pipe debug indicator (only visible in dev mode)
-    if (window.isMobile) {
-        // Create debug element if it doesn't exist
-        let debugElement = document.getElementById('pipe-debug');
-        if (!debugElement) {
-            debugElement = document.createElement('div');
-            debugElement.id = 'pipe-debug';
-            debugElement.style.position = 'absolute';
-            debugElement.style.bottom = '5px';
-            debugElement.style.left = '5px';
-            debugElement.style.background = 'rgba(0,0,0,0.5)';
-            debugElement.style.color = 'white';
-            debugElement.style.padding = '2px 5px';
-            debugElement.style.fontSize = '10px';
-            debugElement.style.zIndex = '100';
-            debugElement.style.borderRadius = '3px';
-            gameArea.appendChild(debugElement);
-        }
-        
-        // Update debug info in game loop
-        window.updatePipeDebug = function() {
-            if (debugElement) {
-                debugElement.textContent = `Pipes: ${pipes.length}`;
-            }
-        };
-    }
     
     // Start game loop with a small delay to ensure clean start
     setTimeout(() => {
@@ -768,13 +495,8 @@ function movePipes() {
     // Skip if no pipes
     if (pipes.length === 0) return;
     
-    // Configure pipe movement speed (slightly slower on mobile)
-    let pipeSpeed;
-    if (window.isMobile) {
-        pipeSpeed = 1.6; // Slightly slower on mobile for better playability
-    } else {
-        pipeSpeed = 2.5;
-    }
+    // Configure pipe movement speed
+    const pipeSpeed = 2.5;
     
     // Update pipes
     for (let i = pipes.length - 1; i >= 0; i--) {
@@ -914,12 +636,10 @@ function gameLoop(timestamp) {
         // Update FPS counter display
         const fpsElement = document.getElementById('fps-counter');
         if (fpsElement) {
-            const deviceInfo = window.isMobile ? 'M' : 'D';
-            const browserInfo = window.isSafariMobile ? 'S' : '';
             const frameDuration = window.lastFrameDuration ? Math.round(window.lastFrameDuration) : 0;
             const pipeCount = pipes.length;
-            const targetInfo = window.isMobile ? `T:${currentTargetFPS}` : '';
-            fpsElement.textContent = `FPS: ${currentFPS} ${deviceInfo}${browserInfo} ${targetInfo} | ${frameDuration}ms | P:${pipeCount}`;
+            const targetInfo = `T:${targetFPS}`;
+            fpsElement.textContent = `FPS: ${currentFPS} ${targetInfo} | ${frameDuration}ms | P:${pipeCount}`;
         }
         
         // Reset counters
@@ -945,53 +665,18 @@ function gameLoop(timestamp) {
     // Track performance
     const elapsed = timestamp - lastFrameTime;
     window.lastFrameDuration = elapsed; // Store for adaptive rendering decisions
-    
-    // Enhanced adaptive frame rate control for mobile
-    if (window.isMobile) {
-        // Start with standard mobile frame rate
-        currentTargetFPS = 30;
-        
-        // Adaptive FPS based on performance
-        if (elapsed < 20) { // If we're getting better than 50fps consistently
-            if (!window.fpsBoostTime) window.fpsBoostTime = timestamp;
-            
-            // If performance has been excellent for 1 second, try higher FPS
-            if (timestamp - window.fpsBoostTime > 1000) {
-                currentTargetFPS = Math.min(45, targetFPS); // Try up to 45fps
-            }
-        } else if (elapsed < 25) { // If we're getting better than 40fps consistently
-            if (!window.fpsBoostTime) window.fpsBoostTime = timestamp;
-            
-            // If performance has been good for 1.5 seconds, try moderate boost
-            if (timestamp - window.fpsBoostTime > 1500) {
-                currentTargetFPS = Math.min(35, targetFPS); // Try up to 35fps
-            }
-        } else if (elapsed > 35) { // If frame time is above 35ms (below ~28fps)
-            currentTargetFPS = 25; // Scale back
-            window.fpsBoostTime = 0; // Reset boost timer
-        } else if (elapsed > 50) { // If getting really bad performance
-            currentTargetFPS = 20; // Minimum playable frame rate
-            window.fpsBoostTime = 0; // Reset boost timer
-        } else {
-            // Reset boost timer if performance isn't consistently good
-            if (elapsed > 30) window.fpsBoostTime = 0;
-        }
-    } else {
-        // On desktop, use full frame rate
-        currentTargetFPS = targetFPS;
-    }
-    
+
     // Apply minimal frame limiting for consistent physics
-    const frameDelay = 1000 / currentTargetFPS;
+    const frameDelay = 1000 / targetFPS;
     
     // Only limit FPS if we're running much faster than target (allow natural browser limits)
-    if (window.isMobile && elapsed < frameDelay * 0.5) { // Very generous headroom
+    if (elapsed < frameDelay * 0.5) { // Very generous headroom
         animationFrameId = requestAnimationFrame(gameLoop);
         return;
     }
     
     // Calculate time step for physics simulation - cap to avoid large jumps
-    // which is critical for mobile performance
+    // which is critical for performance
     const timeStep = Math.min(elapsed, 50); 
     lastFrameTime = timestamp;
     
@@ -1023,65 +708,18 @@ function gameLoop(timestamp) {
         return;
     }
     
-    // Generate new pipes with enhanced adaptive intervals for mobile
+    // Generate new pipes
     if (!lastPipeTime || timestamp - lastPipeTime > pipeInterval) {
-        // Check if we should generate a pipe based on performance conditions
-        let shouldGenerate = true;
-        
-        // For Safari on mobile, be more conservative with pipe generation
-        if (window.isMobile && /^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-            // If in simplified rendering mode, generate fewer pipes
-            if (window.simplifyRendering && pipes.length >= 2) {
-                shouldGenerate = false;
-            }
-            
-            // Increase pipe interval dynamically if performance is suffering
-            if (window.lastFrameDuration > 60) {
-                // Extend pipe interval temporarily
-                lastPipeTime = timestamp - (pipeInterval * 0.5); // Only wait half the normal time
-            }
-        }
-        
-        // Generate pipe if conditions are met
-        if (shouldGenerate) {
-            generatePipe();
-            lastPipeTime = timestamp;
-            
-            // Debug output for pipe generation (reduced for performance)
-            if (window.isMobile && (!window.pipeDebugCount || window.pipeDebugCount < 3)) {
-                window.pipeDebugCount = (window.pipeDebugCount || 0) + 1;
-                console.log("Pipe generated on mobile. Total pipes:", pipes.length);
-                
-                // Force first pipe generation if we haven't seen one yet
-                if (pipes.length === 0 && !window.firstPipeGenerated && window.pipeDebugCount >= 2) {
-                    console.log("FORCING FIRST PIPE GENERATION");
-                    window.firstPipeGenerated = true;
-                    // Force a pipe to appear immediately but with a longer delay
-                    setTimeout(generatePipe, 300);
-                }
-            }
-        }
+        generatePipe();
+        lastPipeTime = timestamp;
     }
     
-    // Generate new clouds occasionally with conservative intervals
+    // Generate new clouds occasionally
     if (!lastCloudTime || timestamp - lastCloudTime > cloudInterval) {
-        // Simple mobile check - generate fewer clouds on mobile for performance
-        let shouldGenerateCloud = true;
-        
-        if (window.isMobile) {
-            // On mobile, only generate clouds when performance is good
-            shouldGenerateCloud = window.lastFrameDuration < 40 && score > 1 && currentFPS > 25;
-        }
-            
-        if (shouldGenerateCloud) {
-            generateCloud();
-        }
+        generateCloud();
         lastCloudTime = timestamp;
         
-        // Longer intervals on mobile for better performance
-        cloudInterval = window.isMobile ? 
-            12000 + Math.random() * 10000 : // Mobile: 12-22 seconds
-            6000 + Math.random() * 8000;    // Desktop: 6-14 seconds
+        cloudInterval = 6000 + Math.random() * 8000; // 6-14 seconds
     }
     
     // Move pipes
@@ -1096,11 +734,6 @@ function gameLoop(timestamp) {
     // Move clouds
     moveClouds();
     
-    // Update pipe debug info if on mobile
-    if (window.isMobile && window.updatePipeDebug) {
-        window.updatePipeDebug();
-    }
-    
     // Continue the loop
     animationFrameId = requestAnimationFrame(gameLoop);
 }
@@ -1112,15 +745,6 @@ function moveClouds() {
     
     // Initialize cloud tracking array if it doesn't exist
     if (!window.activeClouds) window.activeClouds = [];
-    
-    // Limit clouds on mobile for performance, but don't break the game
-    if (window.isMobile && window.activeClouds.length > 8) {
-        // Remove excess clouds gradually
-        const cloudToRemove = window.activeClouds.shift();
-        if (cloudToRemove && cloudToRemove.parentNode) {
-            cloudToRemove.parentNode.removeChild(cloudToRemove);
-        }
-    }
     
     // Move clouds with manual animation
     for (let i = window.activeClouds.length - 1; i >= 0; i--) {
@@ -1169,41 +793,10 @@ function handleKeyDown(event) {
     }
 }
 
-// Handle touch screen tap
-function handleTouchStart(event) {
-    event.preventDefault();
-    
-    // Don't process touches too frequently (debounce)
-    const now = Date.now();
-    if (window.lastTouchTime && now - window.lastTouchTime < 100) {
-        return; // Ignore touches that happen too quickly
-    }
-    window.lastTouchTime = now;
-    
-    // Store touch position to prevent accidental touches
-    const touch = event.touches[0];
-    const gameRect = gameArea.getBoundingClientRect();
-    
-    // Only process touch if it's within the game area
-    if (touch.clientX >= gameRect.left && 
-        touch.clientX <= gameRect.right &&
-        touch.clientY >= gameRect.top && 
-        touch.clientY <= gameRect.bottom) {
-        
-        if (!gameStarted) {
-            init();
-        } else if (gameOver) {
-            init();
-        } else {
-            flap();
-        }
-    }
-}
-
 // Make the frog flap/fart
 function flap() {
-    // Upward velocity (stronger for better gameplay but slightly reduced on mobile)
-    velocity = window.isMobile ? -8.5 : -9.5;
+    // Upward velocity
+    velocity = -9.5;
     
     // Track flap count for effect frequency
     if (window.flapCount === undefined) window.flapCount = 0;
@@ -1212,42 +805,9 @@ function flap() {
     // Always unlock audio on flap
     unlockAudio();
     
-    // Play sounds immediately without setTimeout to maintain user gesture context
-    // Special handling for mobile
-    if (window.isMobile) {
-        // Ultra minimal effects before first pipe on mobile
-        if (score === 0) {
-            // First flaps get more sound attempts to ensure audio unlocks
-            // then gradually reduce for performance
-            if (window.flapCount <= 3) {
-                // First few flaps try to unlock audio
-                playFartSound();
-            } else if (window.flapCount % (window.enablePerformanceMode ? 8 : 5) === 0) {
-                // Minimal visual feedback occasionally (less frequent in performance mode)
-                setTimeout(() => createFartCloud(), 10);
-            }
-            // Most flaps get no effects before first pipe
-        } 
-        // After passing first pipe, more effects but still limited
-        else {
-            // Adjust frequency based on performance
-            const effectFrequency = window.enablePerformanceMode ? 3 : 2;
-            
-            if (window.flapCount % effectFrequency === 0) {
-                // Play sound less frequently in performance mode
-                playFartSound();
-            } else if (window.flapCount % (effectFrequency + 1) === 0) {
-                // Visual feedback on alternate flaps (even less frequent)
-                if (currentFPS > 25) { // Only create clouds if FPS is decent
-                    setTimeout(() => createFartCloud(), 10);
-                }
-            }
-        }
-    } else {
-        // On desktop, play all effects immediately
-        playFartSound();
-        createFartCloud();
-    }
+    // Play all effects immediately
+    playFartSound();
+    createFartCloud();
     
     // Add flap animation (visual feedback is important)
     frog.classList.add('flap');
@@ -1330,7 +890,7 @@ function playFallbackSound(type, fartType = '') {
     // Try to initialize audio if not already done
     initializeAudio();
     
-    // Skip sound if audio context isn't available or if we're on mobile and first tap
+    // Skip sound if audio context isn't available
     if (!audioContext) {
         console.log('Audio context not available, trying to unlock audio');
         unlockAudio();
@@ -1349,7 +909,7 @@ function playFallbackSound(type, fartType = '') {
             }).catch(error => {
                 console.error('Failed to resume audio context:', error);
                 
-                // On mobile, try to use the HTML5 Audio API as fallback
+                // Fallback to HTML5 audio
                 tryHtmlAudioFallback();
             });
         } else {
@@ -2515,7 +2075,7 @@ function createDefaultFart(duration, now) {
     return duration;
 }
 
-// Helper function to prepare all audio elements for better iOS compatibility
+// Helper function to prepare all audio elements for better compatibility
 function prepareAllAudioElements() {
     console.log("Preparing all audio elements");
     
@@ -2534,20 +2094,11 @@ function prepareAllAudioElements() {
 // Create a visual fart cloud when the frog flaps
 function createFartCloud() {
     try {
-        // Check for Safari on mobile running in simplified mode
-        const isSafariSimplified = window.isMobile && 
-            window.simplifyRendering && 
-            /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        
-        // Skip cloud creation in simplified Safari mode
-        // Also limit number of simultaneous fart clouds on Safari
-        const maxClouds = isSafariSimplified ? 1 : 3;
+        // Limit number of simultaneous fart clouds
+        const maxClouds = 3;
         const existingClouds = document.querySelectorAll('.fart-cloud').length;
         
-        if (isSafariSimplified && window.lastFrameDuration > 60) {
-            // Skip cloud creation entirely under serious performance strain
-            return;
-        } else if (existingClouds >= maxClouds) {
+        if (existingClouds >= maxClouds) {
             // Remove oldest cloud if at limit
             const oldestCloud = document.querySelector('.fart-cloud');
             if (oldestCloud && oldestCloud.parentNode) {
